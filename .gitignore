@@ -15,3 +15,7 @@ dist/
 # Local data and secrets
 .env
 *.sqlite3
+
+# Local development data
+backend/var/
+*.sqlite3-*
