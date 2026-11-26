@@ -1,0 +1,17 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Node
+node_modules/
+
+# Build output (shipped in release images, not committed)
+dist/
+
+# Local data and secrets
+.env
+*.sqlite3
