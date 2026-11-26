@@ -32,4 +32,4 @@ When a task seems to need a different decision, stop and ask the owner. Decision
 
 ## Commands
 
-Add Python dependencies with `uv add` in `backend/` and browser-app dependencies with `pnpm add` in `frontend/`, and commit both lockfiles. Run backend tests with `uv run pytest` in `backend/`; they use the production settings. Browser-app commands arrive with P0-08.
+Add Python dependencies with `uv add` in `backend/` and browser-app dependencies with `pnpm add` in `frontend/`, and commit both lockfiles. Run backend tests with `uv run pytest` in `backend/`; they use the production settings. Other `manage.py` commands default to the production settings too, which refuse to start without `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS` and `LIBREEKKLESIA_DATA_DIR`; for local work set `DJANGO_SETTINGS_MODULE=config.settings.development`. Browser-app commands arrive with P0-08.

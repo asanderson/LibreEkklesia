@@ -57,7 +57,8 @@ TEMPLATES = [
 ]
 
 # One SQLite file per church. WAL lets readers work while one writer writes;
-# IMMEDIATE transactions make writers wait for the lock instead of failing.
+# IMMEDIATE transactions make writers wait for the lock instead of failing;
+# synchronous=FULL keeps the last commits (audit entries included) through a power loss.
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
@@ -65,7 +66,7 @@ DATABASES = {
         "OPTIONS": {
             "transaction_mode": "IMMEDIATE",
             "timeout": 5,
-            "init_command": "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL",
+            "init_command": "PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL",
         },
     },
 }
@@ -76,13 +77,36 @@ AUTHENTICATION_BACKENDS = [
     "allauth.account.auth_backends.AuthenticationBackend",
 ]
 
-# Sign-in runs only through allauth's headless API. Its URLs are wired in drop 1 (D1-01).
+# Staff passwords (the step before the second factor) need at least 12 characters.
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 12},
+    },
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
+
+# Sign-in runs only through allauth's headless API for the browser app, with session
+# cookies and no tokens. Its URLs are wired in drop 1 (D1-01). Accounts come by
+# invitation and admin approval (SEC-10), never by self-signup.
 HEADLESS_ONLY = True
+HEADLESS_CLIENTS = ("browser",)
+ACCOUNT_SIGNUP_ENABLED = False
+
+# Cookies are Secure everywhere (browsers treat localhost as secure, so development works).
+# The __Host- prefix stops another site on the church's domain from planting or shadowing them.
+SESSION_COOKIE_NAME = "__Host-sessionid"
+CSRF_COOKIE_NAME = "__Host-csrftoken"
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
 
 # Queued and scheduled jobs live in the church's database; exactly one db_worker runs them.
 TASKS = {"default": {"BACKEND": "django_tasks_db.DatabaseBackend"}}
 
-# Everything loads from the site's own origin (security rule 3).
+# Django's own responses (the API, and the admin in development) allow only the site's own
+# origin (security rule 3). Caddy sends the matching policy for the public site and the app (P0-09).
 SECURE_CSP = {
     "default-src": [CSP.SELF],
     "base-uri": [CSP.SELF],
