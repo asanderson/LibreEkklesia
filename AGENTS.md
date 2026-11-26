@@ -32,4 +32,4 @@ When a task seems to need a different decision, stop and ask the owner. Decision
 
 ## Commands
 
-Add Python dependencies with `uv add` in `backend/` and browser-app dependencies with `pnpm add` in `frontend/`, and commit both lockfiles. Build and test commands arrive with P0-06 and P0-08 and live in their project files.
+Add Python dependencies with `uv add` in `backend/` and browser-app dependencies with `pnpm add` in `frontend/`, and commit both lockfiles. Run backend tests with `uv run pytest` in `backend/`; they use the production settings. Browser-app commands arrive with P0-08.

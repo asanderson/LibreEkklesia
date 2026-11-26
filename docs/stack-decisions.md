@@ -178,6 +178,7 @@ Named so that nothing is silently assumed. Each is settled by a small prototype 
 | Restore drill | Security review gate, before drop 2 |
 | Which process runs restic and holds the backup credentials, and whether the destination can be made append-only | Threat model and restore drill, before drop 2 |
 | PDF library for the printed directory | Drop 2 |
+| SQLite runs in WAL mode (P0-06), so backups and update snapshots must copy the database through SQLite's backup API, never as a plain file copy | D1-03 backups, P0-14 updater |
 | Search tokenizer for languages other than English (Porter stemming covers English only) | When translation work starts |
 
 ## 13. Considered and not chosen
