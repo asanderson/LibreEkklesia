@@ -1,0 +1,7 @@
+# Dependency policy (docs/stack-decisions.md, section 2).
+# New releases wait 7 days (10080 minutes) before they can be installed.
+minimumReleaseAge: 10080
+# Security fixes skip the wait: list the package here, with the reason, in the same pull request.
+minimumReleaseAgeExclude: []
+# Pin exact versions in package.json; the lockfile adds integrity hashes.
+saveExact: true

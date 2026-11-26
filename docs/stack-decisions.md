@@ -44,6 +44,13 @@ Five rules. They apply to the backend, the browser app, build tools and the rele
 4. Builds are reproducible, releases are signed, and a bill of materials is published with each release.
 5. The release pipeline is isolated and holds no long-lived publish tokens.
 
+**Tools (settled by spike P0-05, 26 November 2026).**
+
+- **Python: uv.** `backend/pyproject.toml` holds version ranges and `backend/uv.lock` pins exact versions with hashes. `exclude-newer = "7 days"` holds back new uploads, and the lockfile keeps that setting relative. uv itself is pinned through `required-version`.
+- **Browser app: pnpm.** `frontend/package.json` pins exact versions (`saveExact`) and `frontend/pnpm-lock.yaml` adds integrity hashes. `minimumReleaseAge: 10080` (7 days) holds back new releases. pnpm is pinned through `packageManager`, and it runs no dependency install scripts unless a package is allowed by name.
+- **Security-fix exception.** Python: add the package to `exclude-newer-package` in `backend/pyproject.toml`, with a cutoff just after the fix's upload. Browser app: add it to `minimumReleaseAgeExclude` in `frontend/pnpm-workspace.yaml`. Name the advisory in the pull request, and remove the exception once the release is older than 7 days.
+- **Check.** `tools/check_release_age.py` tries to add a release younger than 7 days on each side, and passes only when both are refused because of their age.
+
 ## 3. Backend
 
 - **Framework.** Django with Django Ninja for the REST API and its OpenAPI description. FastAPI was the owner's first pick. The choice moved to Django to keep the batteries-included rule: sign-in, sessions, migrations, mail, templates and security middleware come from one maintained project.
@@ -158,7 +165,7 @@ Named so that nothing is silently assumed. Each is settled by a small prototype 
 
 | Item | When |
 |---|---|
-| Python lockfile tool and frontend package manager that support the release-age delay | Project setup |
+| Python lockfile tool and frontend package manager that support the release-age delay | Settled 26 November 2026 by P0-05: uv and pnpm (section 2) |
 | Check that the chosen base image's SQLite has FTS5 compiled in | Project setup |
 | OpenAPI client generator | Project setup |
 | HTML sanitizer library for the server-side allowlist | Before the rich-text editor ships (drop 1) |
@@ -209,6 +216,7 @@ Facts looked up by web search during the interview. Sources were cited in the in
 - **SQLite full-text search.** Checked in the work environment on 23 November 2026: SQLite 3.53.1 with FTS5 compiled in. Porter stemming, prefix queries, the bm25 ranking function and the trigram tokenizer all worked. The product's base image still needs the same check (section 12).
 - **Elasticsearch and OpenSearch.** Both projects' Docker Desktop guides ask for at least 4 GB of memory (a desktop setup figure, not a server minimum). OpenSearch defaults to a 1 GB Java heap. OpenSearch needs the host's `vm.max_map_count` at 262144 or more even under Docker; Elasticsearch's production Docker guide asks for 1048576. OpenSearch is a Linux Foundation project. In 2024 Elastic added AGPL as a licence option for part of the Elasticsearch source, next to SSPL and the Elastic License.
 - **Server prices.** DigitalOcean Basic plans: 1 GB for $6, 2 GB for $12 and 4 GB for $24 a month (third-party price lists, 2026). Other providers price differently.
+- **uv and pnpm.** Checked on 26 November 2026: uv 0.11.32 accepts a relative `exclude-newer` such as "7 days" and stores it as a span in `uv.lock`, so `uv lock --locked` stays stable. pnpm 10.28.0 enforces `minimumReleaseAge`. Both refused a release published the same day.
 
 ## 15. Still open
 
@@ -222,3 +230,4 @@ Facts looked up by web search during the interview. Sources were cited in the in
 - 23 November 2026: owner accepted defaults 1 and 3 to 6 and changed search (section 11, item 2; section 13). Status set to signed off. Scope document aligned: member sign-in wording, search module in the later pool, pointer to this document.
 - 24 November 2026: open items now point to the scope document's list instead of repeating it (the owner dropped the MVP target date).
 - 25 November 2026: moved into the repository's `docs/` folder. Cross-references use file names, the code host names the development repository, and the next step points to `plan.md`.
+- 26 November 2026: spike P0-05 settled the dependency tools: uv for Python and pnpm for the browser app, with the release-age delay, the security-fix exception and a check script (section 2).
