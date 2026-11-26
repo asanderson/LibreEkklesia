@@ -46,10 +46,11 @@ Five rules. They apply to the backend, the browser app, build tools and the rele
 
 **Tools (settled by spike P0-05, 26 November 2026).**
 
-- **Python: uv.** `backend/pyproject.toml` holds version ranges and `backend/uv.lock` pins exact versions with hashes. `exclude-newer = "7 days"` holds back new uploads, and the lockfile keeps that setting relative. uv itself is pinned through `required-version`.
-- **Browser app: pnpm.** `frontend/package.json` pins exact versions (`saveExact`) and `frontend/pnpm-lock.yaml` adds integrity hashes. `minimumReleaseAge: 10080` (7 days) holds back new releases. pnpm is pinned through `packageManager`, and it runs no dependency install scripts unless a package is allowed by name.
+- **Python: uv.** `backend/pyproject.toml` holds version ranges and `backend/uv.lock` pins exact versions with hashes, so the lockfile is the pin. `add-bounds = "minor"` makes `uv add` cap each new range below the next minor version. `exclude-newer = "7 days"` holds back new uploads, and the lockfile keeps that setting relative. uv itself is pinned through `required-version`.
+- **Browser app: pnpm.** `frontend/package.json` pins exact versions (`saveExact`) and `frontend/pnpm-lock.yaml` adds integrity hashes. `minimumReleaseAge: 10080` (7 days) holds back new releases. pnpm is pinned through `packageManager`, and `onlyBuiltDependencies: []` keeps dependency install scripts off unless a package is allowed by name.
+- **Vendored frontend files.** The browser app is built into the release image, so a church's server never contacts a package registry. Build output (`dist/`) is not committed.
 - **Security-fix exception.** Python: add the package to `exclude-newer-package` in `backend/pyproject.toml`, with a cutoff just after the fix's upload. Browser app: add it to `minimumReleaseAgeExclude` in `frontend/pnpm-workspace.yaml`. Name the advisory in the pull request, and remove the exception once the release is older than 7 days.
-- **Check.** `tools/check_release_age.py` tries to add a release younger than 7 days on each side, and passes only when both are refused because of their age.
+- **Check.** `tools/check_release_age.py` takes the newest release younger than 7 days on each side and tries to add it. It passes only when both are refused because of their age, fails when either is accepted, and reports inconclusive when nothing young enough exists.
 
 ## 3. Backend
 
@@ -216,7 +217,7 @@ Facts looked up by web search during the interview. Sources were cited in the in
 - **SQLite full-text search.** Checked in the work environment on 23 November 2026: SQLite 3.53.1 with FTS5 compiled in. Porter stemming, prefix queries, the bm25 ranking function and the trigram tokenizer all worked. The product's base image still needs the same check (section 12).
 - **Elasticsearch and OpenSearch.** Both projects' Docker Desktop guides ask for at least 4 GB of memory (a desktop setup figure, not a server minimum). OpenSearch defaults to a 1 GB Java heap. OpenSearch needs the host's `vm.max_map_count` at 262144 or more even under Docker; Elasticsearch's production Docker guide asks for 1048576. OpenSearch is a Linux Foundation project. In 2024 Elastic added AGPL as a licence option for part of the Elasticsearch source, next to SSPL and the Elastic License.
 - **Server prices.** DigitalOcean Basic plans: 1 GB for $6, 2 GB for $12 and 4 GB for $24 a month (third-party price lists, 2026). Other providers price differently.
-- **uv and pnpm.** Checked on 26 November 2026: uv 0.11.32 accepts a relative `exclude-newer` such as "7 days" and stores it as a span in `uv.lock`, so `uv lock --locked` stays stable. pnpm 10.28.0 enforces `minimumReleaseAge`. Both refused a release published the same day.
+- **uv and pnpm.** Checked on 26 November 2026: uv 0.11.32 accepts a relative `exclude-newer` such as "7 days" and stores it as a span in `uv.lock`, so `uv lock --locked` stays stable. pnpm 10.28.0 enforces `minimumReleaseAge`. In the check, uv refused boto3 1.44.12 (17 hours old) and pnpm refused TypeScript 7.1.0-dev.20261126.1 (5 hours old); with both delays removed, the same check failed on both sides.
 
 ## 15. Still open
 

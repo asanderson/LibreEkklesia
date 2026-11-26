@@ -5,3 +5,5 @@ minimumReleaseAge: 10080
 minimumReleaseAgeExclude: []
 # Pin exact versions in package.json; the lockfile adds integrity hashes.
 saveExact: true
+# Dependency install scripts stay off; allow a package here by name, with a reason.
+onlyBuiltDependencies: []
