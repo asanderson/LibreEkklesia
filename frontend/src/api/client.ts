@@ -10,13 +10,14 @@ const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 function readCookie(name: string): string | undefined {
   const prefix = `${name}=`;
   const match = document.cookie.split("; ").find((part) => part.startsWith(prefix));
-  return match === undefined ? undefined : decodeURIComponent(match.slice(prefix.length));
+  return match?.slice(prefix.length);
 }
 
-/** Sends the CSRF token on requests that change data, as Django expects. */
+/** Sends the CSRF token on same-origin requests that change data, as Django expects. */
 const csrf: Middleware = {
   onRequest({ request }) {
-    if (UNSAFE_METHODS.has(request.method)) {
+    const sameOrigin = new URL(request.url, window.location.href).origin === window.location.origin;
+    if (sameOrigin && UNSAFE_METHODS.has(request.method)) {
       const token = readCookie(CSRF_COOKIE);
       if (token !== undefined) {
         request.headers.set("X-CSRFToken", token);
