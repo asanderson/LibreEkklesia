@@ -6,7 +6,19 @@
   "engines": {
     "node": ">=22"
   },
+  "scripts": {
+    "api:schema": "uv run --directory ../backend python manage.py export_openapi --settings=config.settings.development",
+    "api:types": "openapi-typescript src/api/openapi.json --output src/api/schema.d.ts",
+    "api:generate": "pnpm run api:schema && pnpm run api:types",
+    "typecheck": "vue-tsc --noEmit"
+  },
   "dependencies": {
+    "openapi-fetch": "0.17.0",
     "vue": "3.5.45"
+  },
+  "devDependencies": {
+    "openapi-typescript": "7.13.0",
+    "typescript": "5.9.3",
+    "vue-tsc": "3.3.14"
   }
 }
