@@ -1,0 +1,29 @@
+{
+  "shell": {
+    "siteName": "LibreEkklesia",
+    "skip": "Skip to main content",
+    "mainNav": "Main",
+    "footer": "Free and open source church management."
+  },
+  "nav": {
+    "home": "Home"
+  },
+  "titles": {
+    "home": "Home",
+    "notFound": "Page not found"
+  },
+  "home": {
+    "title": "Welcome",
+    "intro": "The member portal and staff admin will appear here.",
+    "api": {
+      "checking": "Checking the server…",
+      "ok": "The server is reachable.",
+      "unavailable": "The server can't be reached right now."
+    }
+  },
+  "notFound": {
+    "title": "Page not found",
+    "body": "There is no page at this address.",
+    "home": "Go to the home page"
+  }
+}

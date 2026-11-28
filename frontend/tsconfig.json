@@ -8,9 +8,13 @@
     "noUncheckedIndexedAccess": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
-    "skipLibCheck": false,
+    "resolveJsonModule": true,
+    // vue-i18n 11's type declarations import a type that Vue exports only from 3.6, and Vue stays
+    // on the stable 3.5 line (docs/stack-decisions.md, section 5). This skips type checking inside
+    // .d.ts files, so project files stay .ts (the generated client types are src/api/schema.ts).
+    "skipLibCheck": true,
     "noEmit": true,
-    "types": []
+    "types": ["vite/client"]
   },
   "include": ["src/**/*.ts", "src/**/*.vue"]
 }

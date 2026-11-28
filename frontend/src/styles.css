@@ -1,0 +1,63 @@
+/* Base styles for the app shell. Colours meet WCAG 2.2 AA contrast on their backgrounds. */
+:root {
+  color-scheme: light;
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+  color: #1a1a1a;
+  background: #ffffff;
+}
+
+body {
+  margin: 0;
+}
+
+a {
+  color: #1d4ed8;
+}
+
+:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #ffffff;
+  border: 2px solid currentColor;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+.site-header,
+.site-footer {
+  padding: 0.5rem 1rem;
+  background: #f3f4f6;
+}
+
+.site-name {
+  margin: 0;
+  font-weight: 700;
+}
+
+nav ul {
+  display: flex;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+main {
+  max-width: 60rem;
+  padding: 1rem;
+}
+
+main:focus {
+  outline: none;
+}

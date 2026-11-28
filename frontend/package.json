@@ -7,19 +7,28 @@
     "node": ">=22"
   },
   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "vue-tsc --noEmit",
     "api:schema": "uv run --directory ../backend python manage.py export_openapi --settings=config.settings.test",
-    "api:types": "openapi-typescript src/api/openapi.json --output src/api/schema.d.ts",
+    "api:types": "openapi-typescript src/api/openapi.json --output src/api/schema.ts",
     "api:generate": "pnpm run api:schema && pnpm run api:types",
-    "api:check": "openapi-typescript src/api/openapi.json --output src/api/schema.d.ts --check",
-    "typecheck": "vue-tsc --noEmit"
+    "api:check": "openapi-typescript src/api/openapi.json --output src/api/schema.ts --check"
   },
   "dependencies": {
     "openapi-fetch": "0.17.0",
-    "vue": "3.5.45"
+    "vue": "3.5.45",
+    "vue-i18n": "11.4.23",
+    "vue-router": "4.6.5"
   },
   "devDependencies": {
+    "@vitejs/plugin-vue": "6.0.11",
     "openapi-typescript": "7.13.0",
     "typescript": "5.9.3",
+    "vite": "8.3.8",
+    "vitest": "5.1.1",
     "vue-tsc": "3.3.14"
   }
 }
