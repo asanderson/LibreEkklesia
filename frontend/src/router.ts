@@ -22,7 +22,8 @@ export const router = createRouter({
     if (savedPosition) {
       return savedPosition;
     }
-    if (to.hash) {
+    // An anchor that is not on the page (yet) falls through to the rules below.
+    if (to.hash && document.getElementById(to.hash.slice(1))) {
       return { el: to.hash };
     }
     return to.path === from.path ? false : { top: 0 };
