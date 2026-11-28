@@ -170,7 +170,7 @@ Named so that nothing is silently assumed. Each is settled by a small prototype 
 | Item | When |
 |---|---|
 | Python lockfile tool and frontend package manager that support the release-age delay | Settled 26 November 2026 by P0-05: uv and pnpm (section 2) |
-| Check that the chosen base image's SQLite has FTS5 compiled in | Project setup |
+| Check that the chosen base image's SQLite has FTS5 compiled in | Settled 28 November 2026 by P0-09: SQLite 3.46.1 in `python:3.13.18-slim-trixie` has FTS5 with the porter tokenizer, and the web container refuses to start without it (system check `core.E001`) |
 | OpenAPI client generator | Settled 26 November 2026 by P0-07: openapi-typescript and openapi-fetch (section 5) |
 | HTML sanitizer library for the server-side allowlist | Before the rich-text editor ships (drop 1) |
 | Trix keyboard and screen-reader behaviour | Spike before drop 1 commits to it |
