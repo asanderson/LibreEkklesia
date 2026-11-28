@@ -381,7 +381,9 @@ Each item needs an owner decision at phase start before any work begins.
 6. Name follow-ups from option (a): register both domains, and finish the attorney screen before drop 1 goes public. Reserving the `libreekklesia` GitHub organization is optional.
 7. The Claude GitHub App is installed on this repository, so cloud agent sessions can push branches and open pull requests.
 8. Each phase's tasks become GitHub issues at phase start.
+9. The browser app (member portal and staff admin) is served under `/app/`, so the generated public site keeps the root paths (P0-08).
 
 ## Change log
 
 - 25 November 2026: first draft, written from the signed-off scope and stack decisions.
+- 28 November 2026: reading 9 added with P0-08: the browser app lives under `/app/`.
