@@ -165,20 +165,33 @@ def main() -> None:
     deploy_check = compose(
         "exec", "-T", "web", "python", "manage.py", "check", "--deploy", "--fail-level", "WARNING"
     )
-    check(
-        deploy_check.returncode == 0 and "no issues" in deploy_check.stdout,
-        "the deploy check passes inside the web image, SQLite's FTS5 included",
-    )
     version = compose(
         "exec", "-T", "web", "python", "-c", "import sqlite3; print(sqlite3.sqlite_version)"
     )
-    print(f"  SQLite in the web image: {version.stdout.strip()}")
+    check(
+        deploy_check.returncode == 0 and "no issues" in deploy_check.stdout,
+        f"the deploy check passes inside the web image, FTS5 included (SQLite {version.stdout.strip()})",
+    )
     user = compose("exec", "-T", "web", "id", "-u")
     check(user.stdout.strip() == "10001", "the web container runs as a non-root user")
     database = compose("exec", "-T", "web", "test", "-f", "/data/libreekklesia.sqlite3")
     check(database.returncode == 0, "the database file is on the data volume")
-    published = compose("port", "web", "8000")
-    check(published.returncode != 0 or not published.stdout.strip(), "Gunicorn's port is not published")
+    listing = compose("ps", "--format", "json", "web")
+    containers = []
+    for line in listing.stdout.splitlines():
+        if line.strip():
+            entry = json.loads(line)
+            containers += entry if isinstance(entry, list) else [entry]
+    published = [
+        port
+        for container in containers
+        for port in container.get("Publishers") or []
+        if port.get("PublishedPort")
+    ]
+    check(
+        listing.returncode == 0 and len(containers) == 1 and not published,
+        f"the web container publishes no ports {published}",
+    )
     try:
         second = compose("run", "--rm", "--no-deps", "-T", "worker", timeout=90)
         refused = second.returncode != 0 and "only one may run" in second.stderr
