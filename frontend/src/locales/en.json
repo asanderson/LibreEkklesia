@@ -3,7 +3,10 @@
     "siteName": "LibreEkklesia",
     "skip": "Skip to main content",
     "mainNav": "Main",
-    "footer": "Free and open source church management."
+    "footer": "Free and open source church management.",
+    "sourceCode": "Source code",
+    "license": "License: AGPL-3.0",
+    "thirdPartyLicenses": "Third-party licenses"
   },
   "nav": {
     "home": "Home"

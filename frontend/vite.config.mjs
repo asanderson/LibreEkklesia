@@ -1,11 +1,22 @@
 import vue from "@vitejs/plugin-vue";
 import { defineConfig } from "vite";
 
+import { sourceUrl } from "./src/source-url.ts";
+
+// Stops the build on a bad VITE_SOURCE_URL, read the way Vite reads it for the bundle, instead
+// of shipping a broken source link.
+const checkSourceUrl = {
+  name: "check-source-url",
+  configResolved(config) {
+    sourceUrl(config.env.VITE_SOURCE_URL);
+  },
+};
+
 // The browser app (member portal and staff admin) is served under /app/.
 // The public site owns /, and Django owns /api/ (Caddy routes them in P0-09).
 export default defineConfig({
   base: "/app/",
-  plugins: [vue()],
+  plugins: [vue(), checkSourceUrl],
   define: {
     // vue-i18n runs in composition mode only (src/i18n.ts): drop the legacy API, the global
     // components and the devtools hooks from the bundle.

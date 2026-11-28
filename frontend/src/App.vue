@@ -2,7 +2,11 @@
 import { useI18n } from "vue-i18n";
 import { RouterLink, RouterView } from "vue-router";
 
+import { sourceUrl } from "./source-url";
+
 const { t } = useI18n();
+const sourceCode = sourceUrl(import.meta.env.VITE_SOURCE_URL);
+const thirdPartyLicenses = `${import.meta.env.BASE_URL}licenses.md`;
 </script>
 
 <template>
@@ -22,5 +26,17 @@ const { t } = useI18n();
   </main>
   <footer class="site-footer">
     <p>{{ t("shell.footer") }}</p>
+    <!-- role="list": Safari drops list semantics from lists with list-style: none outside nav. -->
+    <ul class="footer-links" role="list">
+      <li>
+        <a :href="sourceCode">{{ t("shell.sourceCode") }}</a>
+      </li>
+      <li>
+        <a href="https://www.gnu.org/licenses/agpl-3.0.html">{{ t("shell.license") }}</a>
+      </li>
+      <li>
+        <a :href="thirdPartyLicenses">{{ t("shell.thirdPartyLicenses") }}</a>
+      </li>
+    </ul>
   </footer>
 </template>

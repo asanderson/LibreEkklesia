@@ -4,7 +4,7 @@ Record of the feature-scoping interview, 14–18 November 2026. Companion to `fe
 
 Source of truth: the `docs/` folder of https://github.com/asanderson/LibreEkklesia. Copies elsewhere, such as the claude.ai project, may lag behind.
 
-**Status:** signed off by the owner on 18 November 2026. Every feature-scope branch has been visited and the interview is closed. Section 14 lists what remains open outside feature scope. Updated on 23 November 2026 to match the signed-off stack decisions: member sign-in wording (section 4 and the MVP table in section 6) and a search module in the later pool (section 8). On 24 November 2026 the owner dropped the MVP target date (section 6). On 25 November 2026 the owner kept the name after the name check and chose the development repository (sections 2 and 14).
+**Status:** signed off by the owner on 18 November 2026. Every feature-scope branch has been visited and the interview is closed. Section 14 lists what remains open outside feature scope. Updated on 23 November 2026 to match the signed-off stack decisions: member sign-in wording (section 4 and the MVP table in section 6) and a search module in the later pool (section 8). On 24 November 2026 the owner dropped the MVP target date (section 6). On 25 November 2026 the owner kept the name after the name check and chose the development repository (sections 2 and 14). On 28 November 2026 the owner added source code and license links to the app footer (section 2).
 
 ## 1. Guiding principles (locked)
 
@@ -25,7 +25,7 @@ Priority order. When two principles conflict, the lower number wins.
 - **Operator:** someone who follows one copy-paste install guide once. Everything afterwards (updates, backups, restore, health check) happens in the web admin.
 - **Product boundary:** back office, member portal and public website, with a site builder that replaces the church's own site.
 - **Differentiators:** data ownership with no lock-in, and everything in one install with no per-module cost. Privacy is default behavior. Giving and child check-in sit in the later pool (section 8), so "everything in one" describes the direction, not the MVP.
-- **License:** AGPL-3.0.
+- **License:** AGPL-3.0. The footer of the member portal and staff admin links to the source code, the license and the bundled packages' license notices (owner, 28 November 2026). A church that runs a changed version points the source link at its own published source with the build-time setting `VITE_SOURCE_URL`, as section 13 of the license asks.
 - **Builder:** the project owner, working solo and managing a team of role-based agents.
 - **Development repository:** https://github.com/asanderson/LibreEkklesia, on the owner's personal GitHub account (chosen 25 November 2026).
 - **Pilot:** Eastside Church of Christ. LibreEkklesia replaces its current website (https://welcome.eastside-churchofchrist.org/, built on Google Sites). The church uses Google Workspace.
