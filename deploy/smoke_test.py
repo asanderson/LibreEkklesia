@@ -1,0 +1,205 @@
+"""Check a running bundle from the outside: HTTPS, routes, headers, volumes and the worker.
+
+Run from the repository root after `docker compose up --build --detach` with
+LIBREEKKLESIA_HOST=localhost. Uses only the standard library. Exits 1 when a check fails.
+"""
+
+from __future__ import annotations
+
+import http.client
+import json
+import os
+import pathlib
+import ssl
+import subprocess
+import sys
+import tempfile
+import time
+
+HOST = "localhost"
+DJANGO_CSP = (
+    "default-src 'self'; base-uri 'self'; form-action 'self'; "
+    "frame-ancestors 'none'; object-src 'none'"
+)
+HSTS = "max-age=31536000"
+RESULTS: list[tuple[bool, str]] = []
+
+
+def check(ok: bool, label: str) -> None:
+    RESULTS.append((ok, label))
+    print(("PASS " if ok else "FAIL ") + label, flush=True)
+
+
+def compose(*args: str, timeout: int = 120) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["docker", "compose", *args], capture_output=True, text=True, timeout=timeout
+    )
+
+
+def fetch(path: str, *, scheme: str = "https", context=None, headers=None):
+    if scheme == "https":
+        connection = http.client.HTTPSConnection(HOST, 443, context=context, timeout=10)
+    else:
+        connection = http.client.HTTPConnection(HOST, 80, timeout=10)
+    connection.request("GET", path, headers=headers or {})
+    response = connection.getresponse()
+    body = response.read()
+    connection.close()
+    return response, body
+
+
+def local_authority(folder: pathlib.Path) -> ssl.SSLContext:
+    """Wait for Caddy's local root certificate and trust only it."""
+    root = folder / "root.crt"
+    for _ in range(90):
+        copy = compose("cp", "caddy:/data/caddy/pki/authorities/local/root.crt", str(root))
+        if copy.returncode == 0 and root.exists():
+            return ssl.create_default_context(cafile=str(root))
+        time.sleep(2)
+    raise SystemExit("Caddy's local root certificate never appeared")
+
+
+def wait_for_health(context: ssl.SSLContext) -> None:
+    for _ in range(90):
+        try:
+            response, _ = fetch("/api/health", context=context)
+            if response.status == 200:
+                return
+        except OSError:
+            pass
+        time.sleep(2)
+    raise SystemExit("https://localhost/api/health never answered 200")
+
+
+def static_headers_ok(response) -> bool:
+    return (
+        response.getheader("Content-Security-Policy") == DJANGO_CSP
+        and response.getheader("Strict-Transport-Security") == HSTS
+        and response.getheader("X-Content-Type-Options") == "nosniff"
+        and response.getheader("X-Frame-Options") == "DENY"
+        and response.getheader("Referrer-Policy") == "same-origin"
+        and response.getheader("Cross-Origin-Opener-Policy") == "same-origin"
+        and bool(response.getheader("Permissions-Policy"))
+        and response.getheader("Server") is None
+    )
+
+
+def main() -> None:
+    with tempfile.TemporaryDirectory() as folder:
+        context = local_authority(pathlib.Path(folder))
+        wait_for_health(context)
+
+        # Django behind Caddy.
+        response, body = fetch("/api/health", context=context)
+        check(
+            response.status == 200 and json.loads(body) == {"status": "ok"},
+            "https://localhost/api/health answers with a certificate from Caddy's authority",
+        )
+        check(
+            response.getheader("Content-Security-Policy") == DJANGO_CSP,
+            "Django sends its content security policy through Caddy",
+        )
+        check(
+            response.getheader("Strict-Transport-Security") == HSTS,
+            "Django sees HTTPS behind Caddy (it adds HSTS only on secure requests)",
+        )
+        response, _ = fetch("/api/health", context=context, headers={"X-Forwarded-Proto": "http"})
+        check(
+            response.getheader("Strict-Transport-Security") == HSTS,
+            "Caddy replaces a client's X-Forwarded-Proto instead of passing it on",
+        )
+        response, _ = fetch("/api/health", scheme="http")
+        check(
+            response.status in (301, 308)
+            and response.getheader("Location") == "https://localhost/api/health",
+            f"plain HTTP redirects to HTTPS ({response.status})",
+        )
+
+        # The browser app.
+        response, body = fetch("/app/", context=context)
+        check(
+            response.status == 200 and b'<div id="app">' in body,
+            "/app/ serves the browser app",
+        )
+        check(static_headers_ok(response), "/app/ carries the security headers")
+        response, body = fetch("/app/some/deep/route", context=context)
+        check(
+            response.status == 200 and b'<div id="app">' in body,
+            "a deep link under /app/ gets the app page",
+        )
+        response, _ = fetch("/app/assets/missing.js", context=context)
+        check(response.status == 404, "a missing build file is a 404, not the app page")
+        response, _ = fetch("/app", context=context)
+        check(
+            response.status in (301, 308) and response.getheader("Location") == "/app/",
+            "/app redirects to /app/",
+        )
+        response, body = fetch("/app/licenses.md", context=context)
+        check(
+            response.status == 200
+            and response.getheader("Content-Type") == "text/plain; charset=utf-8"
+            and b"vue" in body,
+            "/app/licenses.md shows the bundled packages' license notices as text",
+        )
+
+        # The generated public site, written by the web container.
+        page = "<!doctype html><title>Site</title><p>Published by the web container</p>"
+        write = compose(
+            "exec", "-T", "web", "python", "-c",
+            f"import pathlib; pathlib.Path('/data/site/index.html').write_text({page!r})",
+        )
+        response, body = fetch("/", context=context)
+        check(
+            write.returncode == 0
+            and response.status == 200
+            and b"Published by the web container" in body,
+            "Caddy serves the public site that the web container writes",
+        )
+        check(static_headers_ok(response), "the public site carries the security headers")
+        response, _ = fetch("/favicon.ico", context=context)
+        check(response.status == 204, "/favicon.ico answers with no content until the site has one")
+        touch = compose("exec", "-T", "caddy", "touch", "/srv/site/probe")
+        check(touch.returncode != 0, "Caddy cannot write to the public site volume")
+
+    # Inside the web image.
+    deploy_check = compose(
+        "exec", "-T", "web", "python", "manage.py", "check", "--deploy", "--fail-level", "WARNING"
+    )
+    check(
+        deploy_check.returncode == 0 and "no issues" in deploy_check.stdout,
+        "the deploy check passes inside the web image, SQLite's FTS5 included",
+    )
+    version = compose(
+        "exec", "-T", "web", "python", "-c", "import sqlite3; print(sqlite3.sqlite_version)"
+    )
+    print(f"  SQLite in the web image: {version.stdout.strip()}")
+    user = compose("exec", "-T", "web", "id", "-u")
+    check(user.stdout.strip() == "10001", "the web container runs as a non-root user")
+    database = compose("exec", "-T", "web", "test", "-f", "/data/libreekklesia.sqlite3")
+    check(database.returncode == 0, "the database file is on the data volume")
+    published = compose("port", "web", "8000")
+    check(published.returncode != 0 or not published.stdout.strip(), "Gunicorn's port is not published")
+    try:
+        second = compose("run", "--rm", "--no-deps", "-T", "worker", timeout=90)
+        refused = second.returncode != 0 and "only one may run" in second.stderr
+    except subprocess.TimeoutExpired:
+        refused = False
+    check(refused, "a second task worker refuses to start")
+
+    failed = [label for ok, label in RESULTS if not ok]
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if os.environ.get("GITHUB_ACTIONS"):
+        lines = "%0A".join(("PASS " if ok else "FAIL ") + label for ok, label in RESULTS)
+        print(f"::notice title=Bundle smoke test ({len(RESULTS) - len(failed)} of {len(RESULTS)} passed)::{lines}")
+        for label in failed[:10]:
+            print(f"::error title=Bundle smoke test::{label}")
+    if summary:
+        with open(summary, "a", encoding="utf-8") as out:
+            out.write("### Bundle smoke test\n\n")
+            out.writelines(f"- {'PASS' if ok else 'FAIL'} {label}\n" for ok, label in RESULTS)
+    print(f"{len(failed)} failed" if failed else "all checks passed")
+    sys.exit(1 if failed else 0)
+
+
+if __name__ == "__main__":
+    main()

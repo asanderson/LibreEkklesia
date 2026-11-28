@@ -27,6 +27,8 @@ DATA_DIR = Path(_required("LIBREEKKLESIA_DATA_DIR"))
 if not DATA_DIR.is_absolute():
     raise ImproperlyConfigured("LIBREEKKLESIA_DATA_DIR must be an absolute path.")
 DATABASES = {"default": {**DATABASES["default"], "NAME": DATA_DIR / "libreekklesia.sqlite3"}}
+MEDIA_ROOT = DATA_DIR / "media"
+PUBLIC_SITE_ROOT = DATA_DIR / "site"
 
 SECRET_KEY = _required("DJANGO_SECRET_KEY")
 if len(SECRET_KEY) < 50 or len(set(SECRET_KEY)) < 5 or SECRET_KEY.startswith("django-insecure-"):

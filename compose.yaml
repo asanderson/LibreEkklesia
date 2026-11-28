@@ -1,0 +1,95 @@
+# LibreEkklesia bundle (docs/stack-decisions.md, section 7): Caddy, Django under Gunicorn, and
+# exactly one task worker. Copy .env.example to .env and fill it in, then:
+#   docker compose up --build
+
+name: libreekklesia
+
+x-django: &django
+  build:
+    context: .
+    dockerfile: deploy/web.Dockerfile
+    target: runtime
+  image: libreekklesia-web:dev
+  environment:
+    DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env (see .env.example)}
+    DJANGO_ALLOWED_HOSTS: ${LIBREEKKLESIA_HOST:-localhost}
+  volumes:
+    # Local volumes on one host: SQLite in WAL mode must never sit on NFS or SMB.
+    - data:/data
+    - media:/data/media
+    - site:/data/site
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  init: true
+  restart: unless-stopped
+  logging: &logging
+    driver: local
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  web:
+    <<: *django
+    # No published ports: only Caddy reaches Gunicorn.
+    healthcheck:
+      test: ["CMD", "python", "healthcheck.py"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  worker:
+    <<: *django
+    command: ["python", "manage.py", "run_worker"]
+    depends_on:
+      web:
+        condition: service_healthy
+
+  caddy:
+    build:
+      context: .
+      dockerfile: deploy/caddy.Dockerfile
+      args:
+        VITE_SOURCE_URL: ${LIBREEKKLESIA_SOURCE_URL:-}
+    image: libreekklesia-caddy:dev
+    environment:
+      LIBREEKKLESIA_HOST: ${LIBREEKKLESIA_HOST:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - type: volume
+        source: site
+        target: /srv/site
+        read_only: true
+        volume:
+          nocopy: true
+      - caddy-data:/data
+      - caddy-config:/config
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: ["no-new-privileges:true"]
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *logging
+
+volumes:
+  # The church's database and the worker's lock file.
+  data:
+  # Uploaded files.
+  media:
+  # The generated public site.
+  site:
+  # Caddy's certificates and keys.
+  caddy-data:
+  caddy-config:
