@@ -1,7 +1,7 @@
 import type { Middleware } from "openapi-fetch";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { csrfMiddleware, readCookie } from "./client";
+import { api, csrfMiddleware, readCookie } from "./client";
 
 type OnRequestParams = Parameters<NonNullable<Middleware["onRequest"]>>[0];
 
@@ -28,8 +28,19 @@ describe("csrfMiddleware", () => {
     expect(request.headers.has("X-CSRFToken")).toBe(false);
   });
 
-  it("never sends the token to another origin", async () => {
-    const request = await send("POST", "https://elsewhere.example/api/things");
+  it("treats the default port as the same origin", async () => {
+    const request = await send("POST", "https://church.example:443/api/things");
+    expect(request.headers.get("X-CSRFToken")).toBe("token-123");
+  });
+
+  it.each([
+    ["another port", "https://church.example:8443/api/things"],
+    ["another scheme", "http://church.example/api/things"],
+    ["a subdomain", "https://evil.church.example/api/things"],
+    ["a look-alike host", "https://church.example.evil.example/api/things"],
+    ["another site", "https://elsewhere.example/api/things"],
+  ])("never sends the token to %s", async (_label, url) => {
+    const request = await send("POST", url);
     expect(request.headers.has("X-CSRFToken")).toBe(false);
   });
 
@@ -50,5 +61,41 @@ describe("readCookie", () => {
 
   it("returns undefined when the cookie is absent", () => {
     expect(readCookie("__Host-csrftoken", "a=1")).toBeUndefined();
+  });
+});
+
+describe("the shared api client", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  // Returns the X-CSRFToken header the client sends from a page on SITE with these cookies.
+  async function tokenSent(method: "get" | "post", baseUrl: string): Promise<string | null> {
+    vi.stubGlobal("document", { cookie: "csrftoken=decoy; __Host-csrftoken=real-token" });
+    vi.stubGlobal("window", { location: { origin: SITE } });
+    let sent: Request | undefined;
+    const fetch = async (request: Request) => {
+      sent = request;
+      return new Response("{}", { headers: { "Content-Type": "application/json" } });
+    };
+    if (method === "get") {
+      await api.request("get", "/api/health", { baseUrl, fetch });
+    } else {
+      // @ts-expect-error -- the API has no POST route yet; this only drives the middleware.
+      await api.request("post", "/api/health", { baseUrl, fetch });
+    }
+    return sent?.headers.get("X-CSRFToken") ?? null;
+  }
+
+  it("sends the __Host-csrftoken cookie on a same-origin POST", async () => {
+    expect(await tokenSent("post", SITE)).toBe("real-token");
+  });
+
+  it("sends no token on a GET", async () => {
+    expect(await tokenSent("get", SITE)).toBeNull();
+  });
+
+  it("sends no token when a request points at another origin", async () => {
+    expect(await tokenSent("post", "https://elsewhere.example")).toBeNull();
   });
 });

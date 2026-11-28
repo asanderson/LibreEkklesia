@@ -126,6 +126,15 @@ def test_cookies_are_secure_prefixed_and_hidden_from_scripts(settings):
     assert (settings.SESSION_COOKIE_SAMESITE, settings.CSRF_COOKIE_SAMESITE) == ("Lax", "Lax")
 
 
+def test_csrf_token_is_readable_by_the_browser_app(settings):
+    # The browser app reads __Host-csrftoken and sends it back in X-CSRFToken
+    # (frontend/src/api/client.ts). An HttpOnly cookie or a token kept in the session
+    # would make every write from the app fail with 403.
+    assert settings.CSRF_COOKIE_HTTPONLY is False
+    assert settings.CSRF_USE_SESSIONS is False
+    assert settings.CSRF_HEADER_NAME == "HTTP_X_CSRFTOKEN"
+
+
 def test_admin_is_absent_in_production_settings(client, settings):
     assert settings.ADMIN_ENABLED is False
     assert "django.contrib.admin" not in settings.INSTALLED_APPS

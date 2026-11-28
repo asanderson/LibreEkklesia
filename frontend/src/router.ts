@@ -1,5 +1,5 @@
 import { nextTick } from "vue";
-import { createRouter, createWebHistory } from "vue-router";
+import { START_LOCATION, createRouter, createWebHistory } from "vue-router";
 
 import { i18n } from "./i18n";
 import HomeView from "./views/HomeView.vue";
@@ -16,18 +16,31 @@ export const router = createRouter({
       meta: { title: "titles.notFound" },
     },
   ],
+  // Back and forward restore the old position; a new page starts at the top; changes that
+  // stay on the same page (a query or an anchor) leave the scroll position alone.
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) {
+      return savedPosition;
+    }
+    if (to.hash) {
+      return { el: to.hash };
+    }
+    return to.path === from.path ? false : { top: 0 };
+  },
 });
 
-let firstNavigation = true;
-
-router.afterEach((to) => {
-  const { t } = i18n.global;
-  const titleKey = typeof to.meta.title === "string" ? to.meta.title : "titles.home";
-  document.title = `${t(titleKey)} · ${t("shell.siteName")}`;
-  if (firstNavigation) {
-    firstNavigation = false;
+router.afterEach((to, from, failure) => {
+  // Blocked, cancelled and repeated navigations change nothing.
+  if (failure) {
     return;
   }
-  // After an in-app navigation, move focus to the new content so screen readers announce it.
+  const { t } = i18n.global;
+  const siteName = t("shell.siteName");
+  document.title = typeof to.meta.title === "string" ? `${t(to.meta.title)} · ${siteName}` : siteName;
+  // Move focus to the new content after an in-app page change, so screen readers announce it.
+  // The first load and same-page changes keep the browser's own focus.
+  if (from === START_LOCATION || to.path === from.path) {
+    return;
+  }
   void nextTick(() => document.getElementById("main")?.focus());
 });

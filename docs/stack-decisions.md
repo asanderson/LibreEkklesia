@@ -80,7 +80,7 @@ The allowlist. Anything not on it needs a written reason.
 5. Native HTML elements first (dialog, popover, details, date input). Reka UI only where native elements fall short, such as a combobox or menu.
 6. Forms through Vue's built-in binding and native validation.
 7. One translation library: vue-i18n.
-8. Build tools: Vite, TypeScript and vue-tsc only. TypeScript stays on 5.9 until vue-tsc and openapi-typescript support TypeScript 7, which drops the JavaScript compiler API they use. The type check skips installed packages' declaration files (`skipLibCheck`) while vue-i18n 11's declarations need a type from Vue 3.6; project files stay `.ts` so they are still checked.
+8. Build tools: Vite with its official Vue plugin, TypeScript and vue-tsc only. TypeScript stays on 5.9 until vue-tsc and openapi-typescript support TypeScript 7, which drops the JavaScript compiler API they use. While vue-i18n 11's declarations need a type from Vue 3.6, the type check skips every declaration file (`skipLibCheck`), so project files stay `.ts` to remain checked.
 
 Accessibility target is WCAG 2.2 AA (principle 2), checked automatically on every page (section 10).
 
@@ -221,7 +221,7 @@ Facts looked up by web search during the interview. Sources were cited in the in
 - **uv and pnpm.** Checked on 26 November 2026: uv 0.11.32 accepts a relative `exclude-newer` such as "7 days" and stores it as a span in `uv.lock`, so `uv lock --locked` stays stable. pnpm 10.28.0 enforces `minimumReleaseAge`. In the check, uv refused boto3 1.44.12 (17 hours old) and pnpm refused TypeScript 7.1.0-dev.20261126.1 (5 hours old); with both delays removed, the same check failed on both sides.
 - **OpenAPI client tools.** Checked on 26 November 2026 by counting the packages each candidate adds to the browser app: openapi-typescript with openapi-fetch 33 (2 at runtime, with no further dependencies), @hey-api/openapi-ts 72, swagger-typescript-api 92, orval 111. TypeScript's latest release, 7.0.2, is the native port and has no JavaScript compiler API; vue-tsc and openapi-typescript (peer `^5.x`) need one, so TypeScript is pinned to 5.9.3.
 - **Vue Router.** Checked on 28 November 2026: 5.5.1 has 16 direct dependencies, most of them for its file-based routing build plugin; 4.6.5 (13 November 2026) has one. Moving the app from 5.5.1 to 4.6.5 removed 37 of 177 packages from the browser app's lockfile.
-- **vue-i18n and Vue 3.6.** Checked on 28 November 2026: the type declarations of every vue-i18n 11 release tried (11.3.2, 11.4.0, 11.4.12 and 11.4.23) import `GenericComponentInstance` from Vue. Vue 3.6.0-beta.17 exports it; the stable 3.5.45 does not.
+- **vue-i18n and Vue 3.6.** Checked on 28 November 2026: the type declarations of every vue-i18n 11 release tried (11.3.2, 11.4.0, 11.4.12 and 11.4.23) import `GenericComponentInstance` from Vue, and so does 11.4.24 (26 November). Vue's 3.6 release candidate (3.6.0-rc.17, 27 November) exports it; the stable 3.5.45 does not.
 
 ## 15. Still open
 
@@ -237,4 +237,4 @@ Facts looked up by web search during the interview. Sources were cited in the in
 - 25 November 2026: moved into the repository's `docs/` folder. Cross-references use file names, the code host names the development repository, and the next step points to `plan.md`.
 - 26 November 2026: spike P0-05 settled the dependency tools: uv for Python and pnpm for the browser app, with the release-age delay, the security-fix exception and a check script (section 2).
 - 26 November 2026: spike P0-07 settled the OpenAPI client: openapi-typescript generates the types and openapi-fetch calls the API. TypeScript is pinned to 5.9 (section 5).
-- 28 November 2026: P0-08 built the frontend skeleton. Vue Router stays on the 4.x line, and type checks skip installed packages' declaration files until Vue 3.6, because of vue-i18n 11 (sections 5 and 14).
+- 28 November 2026: P0-08 built the frontend skeleton. Vue Router stays on the 4.x line, Vite's official Vue plugin is named in the build tools, and type checks skip declaration files until Vue 3.6, because of vue-i18n 11 (sections 5 and 14).

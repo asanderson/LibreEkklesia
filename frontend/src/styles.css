@@ -28,6 +28,7 @@ a {
   background: #ffffff;
   border: 2px solid currentColor;
   transform: translateY(-200%);
+  z-index: 10;
 }
 
 .skip-link:focus {
@@ -47,6 +48,7 @@ a {
 
 nav ul {
   display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
   margin: 0;
   padding: 0;
