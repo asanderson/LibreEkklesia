@@ -199,7 +199,7 @@ def main() -> None:
     )
     baked = subprocess.run(
         ["docker", "run", "--rm", "--entrypoint", "find", "libreekklesia-caddy:dev",
-         "/data", "/config", "/tmp", "-mindepth", "1"],
+         "/data", "/config", "/tmp", "-type", "f"],
         capture_output=True, text=True, timeout=120,
     )
     check(

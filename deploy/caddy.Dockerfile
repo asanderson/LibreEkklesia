@@ -24,10 +24,12 @@ ENV LIBREEKKLESIA_HOST=localhost
 RUN XDG_DATA_HOME=/tmp/caddy-validate XDG_CONFIG_HOME=/tmp/caddy-validate \
         caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile \
     && rm -rf /tmp/caddy-validate
-# Caddy runs as its own user. New volumes for its certificates take this ownership; /srv/site is
-# the mount point for the public site, which the web container writes and Caddy only reads.
+# Caddy runs as its own user. New volumes for its certificates take this ownership, in place of
+# the base image's world-writable folders; /srv/site is the mount point for the public site,
+# which the web container writes and Caddy only reads.
 RUN addgroup -S -g 10002 caddy \
     && adduser -S -D -H -u 10002 -G caddy -s /sbin/nologin caddy \
-    && mkdir -p /data /config /srv/site \
-    && chown caddy:caddy /data /config
+    && mkdir -p /data/caddy /config/caddy /srv/site \
+    && chown -R caddy:caddy /data /config \
+    && chmod 0700 /data/caddy /config/caddy
 USER caddy
