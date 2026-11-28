@@ -1,0 +1,15 @@
+# The images copy only what deploy/*.Dockerfile names; keep everything else out of the context.
+.git
+.github
+**/.env
+**/.env.*
+docs
+**/node_modules
+**/dist
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+backend/var
+**/*.sqlite3*

@@ -1,0 +1,86 @@
+# LibreEkklesia web server (docs/stack-decisions.md, section 7): HTTPS for the site's host, the
+# generated public site, the built browser app under /app/, and API calls forwarded to Django.
+# Nothing else reaches Django.
+{
+	# Nothing reconfigures Caddy at runtime, so its admin endpoint stays off.
+	admin off
+	# Inside a container Caddy cannot add its local authority to a trust store anyway.
+	skip_install_trust
+	# A client that sends its headers or body slowly is cut off instead of holding a connection.
+	servers {
+		timeouts {
+			read_header 10s
+			read_body 30s
+		}
+	}
+}
+
+# Responses Caddy serves itself carry the headers Django sets on API responses
+# (backend/config/settings): the same content security policy, and HSTS for this host only.
+(security_headers) {
+	header {
+		Content-Security-Policy "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'"
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "same-origin"
+		Cross-Origin-Opener-Policy "same-origin"
+		Permissions-Policy "camera=(), geolocation=(), microphone=(), payment=(), usb=()"
+	}
+	# Deleting a header defers the whole block until the response is written, which error
+	# responses skip, so the deletion stands apart and the headers above reach 404s too.
+	header -Server
+}
+
+{$LIBREEKKLESIA_HOST} {
+	# API calls go to Django. Caddy sets X-Forwarded-Proto itself and replaces any value a
+	# client sends, because Django trusts that header (SECURE_PROXY_SSL_HEADER).
+	# Gunicorn's synchronous workers block on a slow request body, so Caddy reads the whole
+	# body (1 MB at most) before passing it on. The buffer must stay larger than max_size: Caddy
+	# streams whatever is left once a buffer is full.
+	handle /api/* {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy web:8000 {
+			request_buffers 2MB
+		}
+	}
+
+	# The browser app, built with the base path /app/.
+	redir /app /app/ 308
+
+	# Hashed build files never change, and a missing one is a 404, never the app page.
+	handle /app/assets/* {
+		import security_headers
+		header Cache-Control "public, max-age=31536000, immutable"
+		root * /srv
+		encode zstd gzip
+		file_server
+	}
+
+	handle /app/* {
+		import security_headers
+		header Cache-Control "no-cache"
+		header /app/licenses.md Content-Type "text/plain; charset=utf-8"
+		root * /srv
+		encode zstd gzip
+		# History-mode routes: a path that is not a file gets the app page.
+		try_files {path} /app/index.html
+		file_server
+	}
+
+	# The generated public site, on a volume the web container writes and Caddy only reads.
+	handle {
+		import security_headers
+		root * /srv/site
+		encode zstd gzip
+		# Browsers ask for /favicon.ico on their own; until the site has one, answer with no content.
+		@no_favicon {
+			path /favicon.ico
+			not file
+		}
+		respond @no_favicon 204
+		file_server
+	}
+}

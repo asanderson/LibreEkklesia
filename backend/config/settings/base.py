@@ -13,6 +13,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # The data volume holds the church's database file (and, later, media and backups).
 DATA_DIR = Path(os.environ.get("LIBREEKKLESIA_DATA_DIR", BASE_DIR / "var"))
+# Uploaded files, and the generated public site that Caddy serves read-only. In the bundle each
+# is its own volume, mounted inside the data folder (compose.yaml).
+MEDIA_ROOT = DATA_DIR / "media"
+PUBLIC_SITE_ROOT = DATA_DIR / "site"
 
 # The staff admin is the project's own app; Django's built-in admin is for development only.
 ADMIN_ENABLED = False

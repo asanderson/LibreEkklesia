@@ -100,7 +100,7 @@ flowchart LR
   a) Trix keyboard and screen-reader behaviour: go or no-go; on no-go, alternatives go back to the owner. b) HTML sanitizer library for the server-side allowlist. c) Public site search: own small script or a vendored library. d) One supported server distribution for the installer. e) Google Workspace mail relay details for the pilot.
   *Done when:* each spike's result and reason are recorded in `stack-decisions.md`.
 - **P0-14 Updater prototype** · M · builder · after P0-12
-  Host systemd timer that verifies signature and digest, snapshots the database, health-checks after the update, and returns to the previous digest and snapshot on failure. Triggered by a request file, never a privileged API.
+  Host systemd timer that verifies signature and digest, snapshots the database, health-checks after the update, and returns to the previous digest and snapshot on failure. Triggered by a request file, never a privileged API. Stops the worker before the new web container runs migrations, and gives containers a stop grace period long enough for a running backup (P0-09 review).
   *Done when:* a deliberately broken release rolls itself back in a test machine.
 
 **Checkpoint, end of phase 0:** the skeleton runs end to end, every scan is green, a signed image is on the test channel, rollback is proven, and the owner reviews before drop 1 starts.
@@ -143,7 +143,7 @@ flowchart LR
   Fixed church page types and a default accessible theme. Trix for rich text, cleaned on the server against the allowlist. Alt text required on every image.
   *Done when:* an editor builds every page type, an image without alt text cannot be published, and script injected through the editor is stripped.
 - **D1-09 Publishing to static HTML** · M · after D1-08
-  Django templates write static pages at publish time. A theme is a template set plus a stylesheet. A scheduled job regenerates time-dependent pages. The content security policy allows only the site's own origin.
+  Django templates write static pages at publish time. A theme is a template set plus a stylesheet. A scheduled job regenerates time-dependent pages. The content security policy allows only the site's own origin. Publishing writes regular files only: Caddy follows symbolic links, and inside its container `/data` holds its TLS keys (P0-09 review).
   *Done when:* publishing writes the files Caddy serves, and pages pass axe with no third-party requests.
 - **D1-10 Version history and restore** · S · `WEB-07` · after D1-08
   *Done when:* an editor restores an earlier version and the site republishes it.
@@ -189,7 +189,7 @@ flowchart LR
   Rate-limited, spam-guarded without a third-party CAPTCHA, with an alert email. Submissions wait in the review inbox and never touch people records.
   *Done when:* a submission lands in the inbox, floods are throttled, and nothing reaches other tables.
 - **D1-24 Data-flows page and content export** · M · `PRV-03`
-  A page listing every outside service, such as the mail relay and the backup destination. A full-instance export of content, media and settings in an open format.
+  A page listing every outside service, such as the mail relay, the backup destination and the certificate authority Caddy uses (Let's Encrypt). A full-instance export of content, media and settings in an open format.
   *Done when:* the page lists every configured service and an export restores into a fresh install.
 
 ### Operations
@@ -387,3 +387,4 @@ Each item needs an owner decision at phase start before any work begins.
 
 - 25 November 2026: first draft, written from the signed-off scope and stack decisions.
 - 28 November 2026: reading 9 added with P0-08: the browser app lives under `/app/`.
+- 28 November 2026: notes from the P0-09 review added to P0-14, D1-09 and D1-24.

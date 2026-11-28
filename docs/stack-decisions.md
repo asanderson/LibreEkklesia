@@ -50,6 +50,7 @@ Five rules. They apply to the backend, the browser app, build tools and the rele
 - **Browser app: pnpm.** `frontend/package.json` pins exact versions (`saveExact`) and `frontend/pnpm-lock.yaml` adds integrity hashes. `minimumReleaseAge: 10080` (7 days) holds back new releases. pnpm is pinned through `packageManager`, and `onlyBuiltDependencies: []` keeps dependency install scripts off unless a package is allowed by name.
 - **Vendored frontend files.** The browser app is built into the release image, so a church's server never contacts a package registry. Build output (`dist/`) is not committed.
 - **Security-fix exception.** Python: add the package to `exclude-newer-package` in `backend/pyproject.toml`, with a cutoff just after the fix's upload. Browser app: add it to `minimumReleaseAgeExclude` in `frontend/pnpm-workspace.yaml`. Name the advisory in the pull request, and remove the exception once the release is older than 7 days.
+- **Container images.** The Dockerfiles in `deploy/` pin base images by digest, chosen from the history in docker-library's repo-info records at least 7 days old. Inside the builds, uv is installed from hashes (`deploy/requirements-uv.txt`) and Corepack checks pnpm against the hash in `packageManager`.
 - **Check.** `tools/check_release_age.py` takes the newest release younger than 7 days on each side and tries to add it. It passes only when both are refused because of their age, fails when either is accepted, and reports inconclusive when nothing young enough exists.
 
 ## 3. Backend
@@ -99,6 +100,8 @@ Docker Compose, with three processes from two images.
 1. **Caddy.** Automatic HTTPS. Serves the generated public site and the built admin and portal files. Forwards only API calls to Django.
 2. **Django under Gunicorn**, with synchronous workers.
 3. **One worker process** for queued and scheduled jobs, from the same image as Django. Exactly one.
+
+**As built (P0-09, 28 November 2026).** `compose.yaml` at the repository root; images from `deploy/web.Dockerfile` (Python 3.13 slim on Debian trixie, running as a non-root user) and `deploy/caddy.Dockerfile` (Caddy on Alpine, with the browser app built in a Node stage). The web container runs the deploy check, SQLite's full-text search included, and the migrations before Gunicorn starts; Gunicorn runs two synchronous workers. The worker takes a lock on the data volume, so a second one refuses to start. Volumes: the database, media and the generated public site, which Caddy mounts read-only, plus Caddy's certificates. Only Caddy publishes ports. Every container runs as a non-root user with a read-only file system, no capabilities and no way to gain privileges. Caddy reads a whole API request body (1 MB at most) before Gunicorn's synchronous workers see it, and cuts off clients that send headers or bodies slowly.
 
 Podman with its built-in auto-update and rollback was the alternative. The owner chose Docker Compose, and the guardrails in section 8 were adopted to cover what that feature would have provided.
 
@@ -167,7 +170,7 @@ Named so that nothing is silently assumed. Each is settled by a small prototype 
 | Item | When |
 |---|---|
 | Python lockfile tool and frontend package manager that support the release-age delay | Settled 26 November 2026 by P0-05: uv and pnpm (section 2) |
-| Check that the chosen base image's SQLite has FTS5 compiled in | Project setup |
+| Check that the chosen base image's SQLite has FTS5 compiled in | Settled 28 November 2026 by P0-09: SQLite 3.46.1 in `python:3.13.18-slim-trixie` has FTS5 with the porter tokenizer, and the web container refuses to start without it (system check `core.E001`) |
 | OpenAPI client generator | Settled 26 November 2026 by P0-07: openapi-typescript and openapi-fetch (section 5) |
 | HTML sanitizer library for the server-side allowlist | Before the rich-text editor ships (drop 1) |
 | Trix keyboard and screen-reader behaviour | Spike before drop 1 commits to it |
@@ -199,6 +202,8 @@ Facts looked up by web search during the interview. Sources were cited in the in
 - **Django.** 5.2 is the long-term support line with security fixes to April 2028. 6.0 (3 December 2025) added built-in content security policy support and the Tasks framework. 6.1 was released on 5 August 2026. 6.2 is due in April 2027. A yearly release cycle starts in 2028.
 - **Django Ninja.** 1.8.0, tested against Django 5.2, 6.0 and 6.1.
 - **django-allauth.** Offers login by emailed code, a headless API and Django Ninja support.
+- **Base images (P0-09).** Checked on 28 November 2026 in docker-library's repo-info history: `python:3.13.18-slim-trixie` as published on 7 November, `caddy:2.11.9-alpine` on 13 November and `node:22.23.5-trixie-slim` on 11 November. Newer rebuilds of the Python and Node images (24 November) were inside the 7-day delay.
+- **Gunicorn.** 27.0.1, uploaded on 12 November 2026, with no dependencies of its own.
 - **django-tasks-db.** Provides the database worker (`db_worker`). An older warning says several workers on SQLite risk running a job twice.
 - **FastAPI.** 0.163.0 on 14 November 2026, still a 0.x version. FastAPI Users was being superseded.
 - **Vue.** Stable line is 3.5.x. 3.6 with Vapor mode was still a release candidate. Vue 4 is planned without breaking API changes. Vue Router and Pinia are official projects.
@@ -238,3 +243,4 @@ Facts looked up by web search during the interview. Sources were cited in the in
 - 26 November 2026: spike P0-05 settled the dependency tools: uv for Python and pnpm for the browser app, with the release-age delay, the security-fix exception and a check script (section 2).
 - 26 November 2026: spike P0-07 settled the OpenAPI client: openapi-typescript generates the types and openapi-fetch calls the API. TypeScript is pinned to 5.9 (section 5).
 - 28 November 2026: P0-08 built the frontend skeleton. Vue Router stays on the 4.x line, Vite's official Vue plugin is named in the build tools, and type checks skip declaration files until Vue 3.6, because of vue-i18n 11 (sections 5 and 14).
+- 28 November 2026: P0-09 built the bundle skeleton (section 7): pinned base images, Gunicorn, the single-worker lock and the start-up check for SQLite's full-text search (sections 2, 12 and 14).
