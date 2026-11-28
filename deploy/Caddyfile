@@ -6,6 +6,13 @@
 	admin off
 	# Inside a container Caddy cannot add its local authority to a trust store anyway.
 	skip_install_trust
+	# A client that sends its headers or body slowly is cut off instead of holding a connection.
+	servers {
+		timeouts {
+			read_header 10s
+			read_body 30s
+		}
+	}
 }
 
 # Responses Caddy serves itself carry the headers Django sets on API responses
@@ -19,15 +26,24 @@
 		Referrer-Policy "same-origin"
 		Cross-Origin-Opener-Policy "same-origin"
 		Permissions-Policy "camera=(), geolocation=(), microphone=(), payment=(), usb=()"
-		-Server
 	}
+	# Deleting a header defers the whole block until the response is written, which error
+	# responses skip, so the deletion stands apart and the headers above reach 404s too.
+	header -Server
 }
 
 {$LIBREEKKLESIA_HOST} {
 	# API calls go to Django. Caddy sets X-Forwarded-Proto itself and replaces any value a
 	# client sends, because Django trusts that header (SECURE_PROXY_SSL_HEADER).
+	# Gunicorn's synchronous workers block on a slow request body, so Caddy reads the whole
+	# body (1 MB at most) before passing it on.
 	handle /api/* {
-		reverse_proxy web:8000
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy web:8000 {
+			request_buffers 1MB
+		}
 	}
 
 	# The browser app, built with the base path /app/.

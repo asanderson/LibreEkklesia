@@ -10,7 +10,7 @@ In priority order: security and privacy (including data ownership), usability an
 
 ## Run it locally
 
-With Docker and Docker Compose: copy `.env.example` to `.env`, set `DJANGO_SECRET_KEY` to at least 50 random characters, and run `docker compose up --build`. The site answers at https://localhost (the certificate comes from Caddy's local authority, so the browser warns once) and the app at https://localhost/app/.
+With Docker and Docker Compose: copy `.env.example` to `.env`, set `DJANGO_SECRET_KEY` to at least 50 random characters, and run `docker compose up --build`. The app answers at https://localhost/app/ and the API's health check at https://localhost/api/health; the certificate comes from Caddy's local authority, so the browser warns once. The public site at https://localhost/ stays empty until publishing arrives in drop 1.
 
 ## Docs
 

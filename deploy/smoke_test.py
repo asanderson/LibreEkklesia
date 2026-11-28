@@ -10,6 +10,7 @@ import http.client
 import json
 import os
 import pathlib
+import secrets
 import ssl
 import subprocess
 import sys
@@ -36,12 +37,12 @@ def compose(*args: str, timeout: int = 120) -> subprocess.CompletedProcess[str]:
     )
 
 
-def fetch(path: str, *, scheme: str = "https", context=None, headers=None):
+def fetch(path: str, *, scheme: str = "https", context=None, headers=None, method="GET", body=None):
     if scheme == "https":
         connection = http.client.HTTPSConnection(HOST, 443, context=context, timeout=10)
     else:
         connection = http.client.HTTPConnection(HOST, 80, timeout=10)
-    connection.request("GET", path, headers=headers or {})
+    connection.request(method, path, body=body, headers=headers or {})
     response = connection.getresponse()
     body = response.read()
     connection.close()
@@ -129,6 +130,15 @@ def main() -> None:
         )
         response, _ = fetch("/app/assets/missing.js", context=context)
         check(response.status == 404, "a missing build file is a 404, not the app page")
+        check(
+            response.getheader("Content-Security-Policy") == DJANGO_CSP,
+            "error responses from Caddy carry the security headers too",
+        )
+        response, _ = fetch(
+            "/api/health", context=context, method="POST", body=b"x" * 1_500_000,
+            headers={"Content-Type": "application/octet-stream"},
+        )
+        check(response.status == 413, f"Caddy refuses an API request body over 1 MB ({response.status})")
         response, _ = fetch("/app", context=context)
         check(
             response.status in (301, 308) and response.getheader("Location") == "/app/",
@@ -142,13 +152,16 @@ def main() -> None:
             "/app/licenses.md shows the bundled packages' license notices as text",
         )
 
-        # The generated public site, written by the web container.
+        # The generated public site, written by the web container. A uniquely named probe page
+        # leaves anything already published alone.
+        probe = f"smoke-test-{secrets.token_hex(8)}.html"
         page = "<!doctype html><title>Site</title><p>Published by the web container</p>"
         write = compose(
             "exec", "-T", "web", "python", "-c",
-            f"import pathlib; pathlib.Path('/data/site/index.html').write_text({page!r})",
+            f"import pathlib; pathlib.Path('/data/site/{probe}').write_text({page!r})",
         )
-        response, body = fetch("/", context=context)
+        response, body = fetch(f"/{probe}", context=context)
+        compose("exec", "-T", "web", "rm", "-f", f"/data/site/{probe}")
         check(
             write.returncode == 0
             and response.status == 200
@@ -159,7 +172,10 @@ def main() -> None:
         response, _ = fetch("/favicon.ico", context=context)
         check(response.status == 204, "/favicon.ico answers with no content until the site has one")
         touch = compose("exec", "-T", "caddy", "touch", "/srv/site/probe")
-        check(touch.returncode != 0, "Caddy cannot write to the public site volume")
+        check(
+            touch.returncode != 0 and "Read-only file system" in touch.stderr,
+            "Caddy mounts the public site volume read-only",
+        )
 
     # Inside the web image.
     deploy_check = compose(
@@ -174,6 +190,22 @@ def main() -> None:
     )
     user = compose("exec", "-T", "web", "id", "-u")
     check(user.stdout.strip() == "10001", "the web container runs as a non-root user")
+    caddy_user = compose("exec", "-T", "caddy", "id", "-u")
+    check(caddy_user.stdout.strip() == "10002", "Caddy runs as a non-root user")
+    adapted = compose("exec", "-T", "caddy", "caddy", "adapt", "--config", "/etc/caddy/Caddyfile")
+    check(
+        adapted.returncode == 0 and '"request_buffers"' in adapted.stdout,
+        "Caddy buffers API request bodies before Gunicorn sees them",
+    )
+    baked = subprocess.run(
+        ["docker", "run", "--rm", "--entrypoint", "find", "libreekklesia-caddy:dev",
+         "/data", "/config", "/tmp", "-mindepth", "1"],
+        capture_output=True, text=True, timeout=120,
+    )
+    check(
+        baked.returncode == 0 and not baked.stdout.strip(),
+        "the Caddy image holds no certificates or keys",
+    )
     database = compose("exec", "-T", "web", "test", "-f", "/data/libreekklesia.sqlite3")
     check(database.returncode == 0, "the database file is on the data volume")
     listing = compose("ps", "--format", "json", "web")
@@ -192,6 +224,26 @@ def main() -> None:
         listing.returncode == 0 and len(containers) == 1 and not published,
         f"the web container publishes no ports {published}",
     )
+    roundtrip = compose(
+        "exec", "-T", "web", "python", "-c",
+        "import django, time\n"
+        "django.setup()\n"
+        "from core.tasks import ping\n"
+        "result = ping.enqueue()\n"
+        "deadline = time.monotonic() + 60\n"
+        "while not result.is_finished and time.monotonic() < deadline:\n"
+        "    time.sleep(1)\n"
+        "    result.refresh()\n"
+        "print(result.status, result.return_value if result.is_finished else None)\n",
+        timeout=90,
+    )
+    check(
+        roundtrip.stdout.split() == ["SUCCESSFUL", "pong"],
+        f"the task worker runs a queued task ({roundtrip.stdout.strip() or roundtrip.stderr.strip()[-200:]})",
+    )
+    web_logs = compose("logs", "--no-color", "web")
+    errors = [line for line in web_logs.stdout.splitlines() if "[ERROR]" in line]
+    check(not errors, f"the web container logged no errors {errors[:3]}")
     try:
         second = compose("run", "--rm", "--no-deps", "-T", "worker", timeout=90)
         refused = second.returncode != 0 and "only one may run" in second.stderr

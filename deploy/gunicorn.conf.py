@@ -13,3 +13,6 @@ timeout = 30
 worker_tmp_dir = "/dev/shm"
 # Errors go to standard error, where Docker keeps them on the server.
 errorlog = "-"
+# Gunicorn 25.1 and later open a control socket that can add workers, reload and shut down.
+# Nothing here uses it, and it could not be written on the read-only file system anyway.
+control_socket_disable = True

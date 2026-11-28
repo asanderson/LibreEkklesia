@@ -18,11 +18,16 @@ RUN pnpm run build
 FROM caddy:2.11.9-alpine@sha256:003a97808e781aa9f7e75cc2f43d34d461099031faf5e20faefb9f61126836f0
 COPY deploy/Caddyfile /etc/caddy/Caddyfile
 COPY --from=app /src/frontend/dist /srv/app
-# Mount point for the generated public site: a volume the web container writes and Caddy reads.
-RUN mkdir -p /srv/site
 ENV LIBREEKKLESIA_HOST=localhost
 # Validating provisions Caddy's local certificate authority, so it runs against throwaway
 # storage: no key may end up in the image.
 RUN XDG_DATA_HOME=/tmp/caddy-validate XDG_CONFIG_HOME=/tmp/caddy-validate \
         caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile \
     && rm -rf /tmp/caddy-validate
+# Caddy runs as its own user. New volumes for its certificates take this ownership; /srv/site is
+# the mount point for the public site, which the web container writes and Caddy only reads.
+RUN addgroup -S -g 10002 caddy \
+    && adduser -S -D -H -u 10002 -G caddy -s /sbin/nologin caddy \
+    && mkdir -p /data /config /srv/site \
+    && chown caddy:caddy /data /config
+USER caddy
