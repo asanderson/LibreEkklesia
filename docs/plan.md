@@ -387,3 +387,4 @@ Each item needs an owner decision at phase start before any work begins.
 
 - 25 November 2026: first draft, written from the signed-off scope and stack decisions.
 - 28 November 2026: reading 9 added with P0-08: the browser app lives under `/app/`.
+- 28 November 2026: notes from the P0-09 review added to P0-14, D1-09 and D1-24.

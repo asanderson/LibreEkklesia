@@ -193,9 +193,25 @@ def main() -> None:
     caddy_user = compose("exec", "-T", "caddy", "id", "-u")
     check(caddy_user.stdout.strip() == "10002", "Caddy runs as a non-root user")
     adapted = compose("exec", "-T", "caddy", "caddy", "adapt", "--config", "/etc/caddy/Caddyfile")
+    limits = {"max_size": [], "request_buffers": []}
+
+    def collect(node):
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key in limits:
+                    limits[key].append(value)
+                collect(value)
+        elif isinstance(node, list):
+            for item in node:
+                collect(item)
+
+    if adapted.returncode == 0:
+        collect(json.loads(adapted.stdout))
     check(
-        adapted.returncode == 0 and '"request_buffers"' in adapted.stdout,
-        "Caddy buffers API request bodies before Gunicorn sees them",
+        len(limits["max_size"]) == 1
+        and len(limits["request_buffers"]) == 1
+        and limits["request_buffers"][0] > limits["max_size"][0],
+        f"Caddy holds a whole API request body before Gunicorn sees any of it {limits}",
     )
     baked = subprocess.run(
         ["docker", "run", "--rm", "--entrypoint", "find", "libreekklesia-caddy:dev",

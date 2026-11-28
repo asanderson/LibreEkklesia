@@ -36,13 +36,14 @@
 	# API calls go to Django. Caddy sets X-Forwarded-Proto itself and replaces any value a
 	# client sends, because Django trusts that header (SECURE_PROXY_SSL_HEADER).
 	# Gunicorn's synchronous workers block on a slow request body, so Caddy reads the whole
-	# body (1 MB at most) before passing it on.
+	# body (1 MB at most) before passing it on. The buffer must stay larger than max_size: Caddy
+	# streams whatever is left once a buffer is full.
 	handle /api/* {
 		request_body {
 			max_size 1MB
 		}
 		reverse_proxy web:8000 {
-			request_buffers 1MB
+			request_buffers 2MB
 		}
 	}
 
