@@ -26,7 +26,7 @@ const thirdPartyLicenses = `${import.meta.env.BASE_URL}licenses.md`;
   </main>
   <footer class="site-footer">
     <p>{{ t("shell.footer") }}</p>
-    <!-- role="list": Safari drops list semantics from unstyled lists outside nav. -->
+    <!-- role="list": Safari drops list semantics from lists with list-style: none outside nav. -->
     <ul class="footer-links" role="list">
       <li>
         <a :href="sourceCode">{{ t("shell.sourceCode") }}</a>

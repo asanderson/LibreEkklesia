@@ -14,6 +14,10 @@ describe("sourceUrl", () => {
     );
   });
 
+  it("links to the address as parsed, so a sloppy one still leaves the site", () => {
+    expect(sourceUrl("https:/git.example.org/church")).toBe("https://git.example.org/church");
+  });
+
   it.each([
     ["no scheme", "git.example.org/church/libreekklesia"],
     ["a script", "javascript:alert(1)"],
