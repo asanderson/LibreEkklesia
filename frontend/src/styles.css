@@ -46,7 +46,8 @@ a {
   font-weight: 700;
 }
 
-nav ul {
+nav ul,
+.footer-links {
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;

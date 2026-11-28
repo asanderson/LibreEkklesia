@@ -2,7 +2,10 @@
 import { useI18n } from "vue-i18n";
 import { RouterLink, RouterView } from "vue-router";
 
+import { SOURCE_URL } from "./source";
+
 const { t } = useI18n();
+const thirdPartyLicenses = `${import.meta.env.BASE_URL}licenses.md`;
 </script>
 
 <template>
@@ -22,5 +25,16 @@ const { t } = useI18n();
   </main>
   <footer class="site-footer">
     <p>{{ t("shell.footer") }}</p>
+    <ul class="footer-links">
+      <li>
+        <a :href="SOURCE_URL">{{ t("shell.sourceCode") }}</a>
+      </li>
+      <li>
+        <a href="https://www.gnu.org/licenses/agpl-3.0.html">{{ t("shell.license") }}</a>
+      </li>
+      <li>
+        <a :href="thirdPartyLicenses">{{ t("shell.thirdPartyLicenses") }}</a>
+      </li>
+    </ul>
   </footer>
 </template>
